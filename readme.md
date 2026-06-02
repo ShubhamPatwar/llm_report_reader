@@ -189,24 +189,10 @@ List all abnormal parameters.
 ```text
 medical-rag/
 │
-├── reports/
-│   └── sample_report.pdf
+├── sample_reports/
+│   └── WM17S.pdf
 │
-├── data/
-│   └── extracted_text.txt
-│
-├── notebooks/
-│   └── experimentation.ipynb
-│
-├── src/
-│   ├── pdf_extractor.py
-│   ├── chunking.py
-│   ├── embeddings.py
-│   ├── vector_store.py
-│   ├── retriever.py
-│   └── rag_pipeline.py
-│
-├── requirements.txt
+├── Complete_Flow.ipynb
 │
 └── README.md
 ```
