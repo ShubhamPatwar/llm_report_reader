@@ -1,243 +1,133 @@
-# 🏥 Medical Report RAG Assistant
+# 🩺 Medical Report Reader (RAG)
 
-An end-to-end Retrieval-Augmented Generation (RAG) application that allows users to query pathology and diagnostic reports using natural language.
+A tool that reads a medical lab report PDF, extracts every test into structured
+data, and lets you ask plain-language questions about it — answered using
+Retrieval-Augmented Generation (RAG) over your own report.
 
-The system extracts information from PDF-based medical reports, converts the report into semantically meaningful chunks, stores them in a vector database, retrieves relevant medical information based on user queries, and generates accurate responses using an LLM through OpenRouter.
-
----
-
-## 🚀 Project Objective
-
-Medical reports often contain multiple sections such as:
-
-- Liver & Kidney Panel
-- Lipid Profile
-- Thyroid Profile
-- HbA1c
-- Vitamin D
-- CBC
-
-Patients and healthcare professionals may need to quickly retrieve specific information without manually reading the entire report.
-
-This project aims to build an intelligent question-answering system that can:
-
-- Understand medical reports
-- Retrieve relevant sections
-- Answer user questions in natural language
-- Demonstrate an end-to-end RAG architecture
+Available as both a **Streamlit web app** and a **PyQt5 desktop app**.
 
 ---
 
-## 🏗️ Architecture
+## 📸 Screenshots
 
-```text
-Medical PDF
-    ↓
-PyPDF Text Extraction
-    ↓
-Semantic Section-Based Chunking
-    ↓
-LangChain Documents
-    ↓
-SentenceTransformer Embeddings
-    ↓
-FAISS Vector Database
-    ↓
-Retriever
-    ↓
-OpenRouter LLM
-    ↓
-Natural Language Answer
+<!--
+Add your screenshots to a `screenshots/` folder in this repo, then reference
+them below. Example:
+
+  screenshots/
+    setup.png
+    extracted-tests.png
+    chat.png
+
+GitHub will render them automatically once pushed.
+-->
+
+| Setup | Extracted Tests | Ask Questions |
+|---|---|---|
+| ![Setup screen](screenshots/setup.png) | ![Extracted tests table](screenshots/extracted-tests.png) | ![Chat with the report](screenshots/chat.png) |
+
+<!-- Replace the rows above with as many screenshots as you'd like, or add a single full-page screenshot here: -->
+<!-- ![App overview](screenshots/overview.png) -->
+
+---
+
+## ✨ Features
+
+- **Upload a PDF lab report** and extract every test (section, name, result, unit, reference range) automatically using an LLM.
+- **Automatic range flagging** — each result is checked against its reference range and tagged "Within range" / "Out of range" / "Unknown".
+- **Ask questions in plain English** ("Is my RBC count okay?", "What is AST?") and get answers grounded in your actual report via RAG (FAISS + HuggingFace embeddings + MMR retrieval).
+- **Bring your own API key** — works with any OpenAI-compatible endpoint (OpenRouter, Groq, etc.). Your key and report data stay in your own session; nothing is persisted server-side.
+- **Chunked extraction** for long, multi-page reports, so it works within free-tier rate limits.
+
+---
+
+## 🧱 Tech Stack
+
+- **UI:** Streamlit (web) / PyQt5 (desktop)
+- **PDF parsing:** pypdf
+- **Orchestration:** LangChain
+- **Embeddings:** `sentence-transformers/all-MiniLM-L6-v2` (HuggingFace)
+- **Vector store:** FAISS
+- **LLM access:** Any OpenAI-compatible API (OpenRouter, Groq, etc.)
+
+---
+
+## ⚙️ How It Works
+
+```
+PDF upload
+   │
+   ▼
+Text extraction (pypdf)
+   │
+   ▼
+LLM structures raw text → JSON (per chunk, to respect token limits)
+   │
+   ▼
+LangChain Documents → chunked → embedded (FAISS vector store)
+   │
+   ▼
+User question → MMR retrieval → relevant chunks → LLM answer
 ```
 
 ---
 
-## 🔧 Technologies Used
+## 🚀 Getting Started
 
-### PDF Processing
-- PyPDF
+### 1. Clone the repo
 
-### RAG Framework
-- LangChain
-
-### Embedding Model
-- SentenceTransformers
-- all-MiniLM-L6-v2
-
-### Vector Database
-- FAISS
-
-### LLM Provider
-- OpenRouter
-
-### Programming Language
-- Python
-
----
-
-## 📌 Features Implemented
-
-### 1. PDF Report Extraction
-
-Medical reports are extracted using PyPDF.
-
-```python
-from pypdf import PdfReader
+```bash
+git clone https://github.com/ShubhamPatwar/llm_report_reader.git
+cd llm_report_reader
 ```
 
-The extracted text is consolidated across all report pages.
+### 2. Install dependencies
 
----
-
-### 2. Semantic Chunking
-
-Instead of fixed-size chunking, the report is split using domain-specific medical section headers such as:
-
-```text
-LIVER & KIDNEY PANEL, SERUM
-LIPID SCREEN, SERUM
-THYROID PROFILE,TOTAL, SERUM
-HbA1c (GLYCOSYLATED HEMOGLOBIN), BLOOD
-COMPLETE BLOOD COUNT; CBC
+```bash
+pip install -r requirements_streamlit.txt
 ```
 
-This approach preserves medical context and improves retrieval quality.
+### 3. Run the app
 
----
-
-### 3. LangChain Document Creation
-
-Each medical section is converted into a LangChain Document object.
-
-Example:
-
-```python
-Document(
-    page_content="HbA1c : 10.0 %",
-    metadata={
-        "section":"HbA1c"
-    }
-)
+```bash
+streamlit run streamlit_app.py
 ```
 
+The app opens at `http://localhost:8501`. Paste your API key and base URL into the sidebar — no `.env` file or hardcoded secrets needed.
+
 ---
 
-### 4. Embedding Generation
+## 🔑 API Configuration
 
-Text chunks are converted into dense vector representations using:
+In the sidebar, set:
 
-```text
-sentence-transformers/all-MiniLM-L6-v2
+| Field | Example |
+|---|---|
+| API key | Your provider's key (kept in-session only) |
+| Base URL | `https://openrouter.ai/api/v1` or `https://api.groq.com/openai/v1` |
+| Model | e.g. `llama-3.1-8b-instant`, `deepseek/deepseek-r1:free` |
+
+Any OpenAI-compatible chat completions endpoint works.
+
+---
+
+## ☁️ Deployment
+
+This app has been deployed on an AWS EC2 instance:
+
+```bash
+streamlit run streamlit_app.py --server.port 8501 --server.address 0.0.0.0
 ```
 
-These embeddings capture semantic meaning and enable similarity search.
+with port `8501` opened in the instance's security group. (For production use, put it behind a reverse proxy like nginx or Caddy for HTTPS, and run it as a systemd service so it survives reboots.)
 
 ---
 
-### 5. Vector Database Indexing
+## ⚠️ Disclaimer
 
-Embeddings are stored inside FAISS for efficient nearest-neighbor retrieval.
+This tool summarizes and explains report contents using an LLM. It is **not**
+a medical device and does **not** provide medical advice or diagnosis.
+Range-flagging is an automatic numeric check, not a clinical interpretation.
+Always consult a qualified healthcare professional about your results.
 
-```python
-FAISS.from_documents(...)
-```
 
----
-
-### 6. Retrieval-Augmented Generation
-
-When a user asks a question:
-
-```text
-What is my HbA1c?
-```
-
-The system:
-
-1. Converts the query into an embedding
-2. Retrieves relevant report sections
-3. Injects retrieved context into the prompt
-4. Sends the augmented prompt to an LLM via OpenRouter
-5. Generates a final answer
-
-Example response:
-
-```text
-Your HbA1c result is 10.0%.
-```
-
----
-
-## 💡 Example Queries
-
-```text
-What is my HbA1c?
-
-Show my kidney function results.
-
-Summarize my lipid profile.
-
-What are my thyroid values?
-
-List all abnormal parameters.
-```
-
----
-
-## 📂 Project Structure
-
-```text
-medical-rag/
-│
-├── sample_reports/
-│   └── WM17S.pdf
-│
-├── Complete_Flow.ipynb
-│
-└── README.md
-```
-
----
-
-## 🧠 Key Learnings
-
-This project helped in understanding:
-
-- Retrieval-Augmented Generation (RAG)
-- Semantic chunking strategies
-- Embedding models
-- Vector databases
-- Similarity search
-- LangChain document abstraction
-- Prompt engineering
-- OpenRouter integrations
-- Medical document intelligence
-
----
-
-## 🔮 Future Improvements
-
-- Multi-PDF support
-- Streamlit/Flask chatbot interface
-- Medical guideline knowledge base integration
-- Hybrid search (Vector + Keyword Search)
-- Metadata filtering
-- Patient report comparison
-- Clinical recommendation engine
-- Multi-agent workflow using CrewAI
-
----
-
-## 🎯 Outcome
-
-Successfully developed a complete RAG pipeline capable of answering questions from pathology reports using semantic retrieval and LLM-based response generation.
-
-The project demonstrates practical implementation of:
-
-- LangChain
-- FAISS
-- Embeddings
-- Prompt Engineering
-- Retrieval-Augmented Generation (RAG)
-
-and serves as a foundation for healthcare-focused AI assistants.
